@@ -1,0 +1,409 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>VIChTech Wallet Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap">
+<style>
+/* Layout concept: use-case index (left) | phone prototype (centre) | live state machine + prototype controls (right) */
+:root{
+  --bg:#EDF0F6; --panel:#FFFFFF; --ink:#14213D; --muted:#5A6684; --line:#D8DEEA;
+  --brand:#1F3864; --onbrand:#FFFFFF; --blue:#2F5FA8; --tint:#E7EEF9;
+  --ok:#17795E; --okbg:#DCF2E9; --warn:#8F5A00; --warnbg:#FBEFD3; --bad:#B3261E; --badbg:#FBE2E0;
+  --bezel:#101828; --screen:#F6F8FC; --card:#FFFFFF;
+  --fd:'Sora',system-ui,sans-serif; --fb:'Figtree',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1322; --panel:#151E35; --ink:#E5EAF6; --muted:#9AA7C4; --line:#27345A;
+  --brand:#8FB0EA; --onbrand:#0D1322; --blue:#86AAE8; --tint:#1C2A4B;
+  --ok:#4CC9A0; --okbg:#10362D; --warn:#F2B84B; --warnbg:#3A2D10; --bad:#FF8F86; --badbg:#401D1B;
+  --bezel:#050810; --screen:#0F172B; --card:#18223D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1322; --panel:#151E35; --ink:#E5EAF6; --muted:#9AA7C4; --line:#27345A;
+  --brand:#8FB0EA; --onbrand:#0D1322; --blue:#86AAE8; --tint:#1C2A4B;
+  --ok:#4CC9A0; --okbg:#10362D; --warn:#F2B84B; --warnbg:#3A2D10; --bad:#FF8F86; --badbg:#401D1B;
+  --bezel:#050810; --screen:#0F172B; --card:#18223D; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:14px;line-height:1.45;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;cursor:pointer;color:inherit}
+h1,h2,h3{font-family:var(--fd);margin:0}
+.shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:270px 410px 1fr;gap:22px;align-items:start}
+@media(max-width:1060px){.shell{grid-template-columns:1fr;justify-items:center}.side{width:100%;max-width:410px}}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.side h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.brandrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--brand);color:var(--onbrand);display:grid;place-items:center;font-family:var(--fd);font-weight:700}
+.brandrow b{font-family:var(--fd);font-size:15px}.brandrow small{display:block;color:var(--muted);font-size:11.5px}
+.actor{margin:12px 0 4px;font-weight:700;font-size:12px;color:var(--blue)}
+.uc{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:6px 8px;font-size:13px}
+.uc:hover{background:var(--tint)}.uc.cur{background:var(--tint);font-weight:700;outline:1.5px solid var(--blue)}
+.uc i{font-style:normal;color:var(--muted);font-size:11px;white-space:nowrap}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.rightcol{display:grid;gap:16px;min-width:0;width:100%}
+.sm{display:grid;gap:5px}
+.st{border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px;background:var(--screen)}
+.st b{display:block;font-size:13px}.st span{color:var(--muted);font-size:11.5px}
+.st.on{border-color:var(--blue);background:var(--tint);box-shadow:0 0 0 2px var(--blue)}
+.st.fail.on{border-color:var(--bad);background:var(--badbg);box-shadow:0 0 0 2px var(--bad)}
+.st.good.on{border-color:var(--ok);background:var(--okbg);box-shadow:0 0 0 2px var(--ok)}
+.comp{border:1.5px dashed var(--blue);border-radius:12px;padding:8px;display:grid;gap:5px}
+.comp>em{font-style:normal;font-weight:700;font-size:11.5px;color:var(--blue)}
+.ctl{display:grid;gap:8px}.ctl label{font-size:12px;color:var(--muted);display:grid;gap:3px}
+.ctl select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--screen);color:var(--ink)}
+/* phone */
+.phonewrap{width:100%;max-width:410px}
+#phone{width:100%;max-width:410px;height:820px;background:var(--bezel);border-radius:42px;padding:10px;position:relative}
+#app{height:100%;background:var(--screen);border-radius:32px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sbar{display:flex;justify-content:space-between;padding:10px 22px 4px;font-size:12px;font-weight:700}
+.hdr{display:flex;align-items:center;gap:10px;padding:8px 16px 10px}
+.hdr h1{font-size:17px;flex:1}
+.back{background:var(--tint);border:0;border-radius:10px;width:34px;height:34px;display:grid;place-items:center}
+.chipst{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--tint);color:var(--blue);white-space:nowrap}
+#body{flex:1;overflow:auto;padding:4px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.tabs{display:flex;border-top:1px solid var(--line);background:var(--card)}
+.tabs button{flex:1;background:none;border:0;padding:9px 0 12px;font-size:11px;color:var(--muted);display:grid;justify-items:center;gap:2px}
+.tabs button.on{color:var(--blue);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.wallet{background:linear-gradient(135deg,var(--brand),#2F5FA8);color:#fff;border:0}
+:root[data-theme="dark"] .wallet,:root:not([data-theme="light"]) .wallet{color:#fff}
+.wallet small{opacity:.8}.bal{font-family:var(--fd);font-size:30px;font-weight:600;margin:2px 0}
+.btn{border:0;border-radius:12px;padding:12px 14px;font-weight:700;background:var(--brand);color:var(--onbrand);width:100%}
+.btn.sec{background:var(--tint);color:var(--blue)}.btn.ghost{background:none;border:1.5px solid var(--line);color:var(--ink)}
+.btn.bad{background:var(--bad);color:#fff}.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btnrow{display:flex;gap:8px}.btnrow>*{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.act{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;display:grid;gap:6px;font-weight:600}
+.act svg{color:var(--blue)}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left}
+.row:last-child{border-bottom:0}.row .grow{flex:1;min-width:0}.row b{display:block}.row small{color:var(--muted)}
+.av{width:36px;height:36px;border-radius:50%;background:var(--tint);color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.amt{font-family:var(--fd);font-weight:600;white-space:nowrap}.amt.in{color:var(--ok)}
+.pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block}
+.p-ok{background:var(--okbg);color:var(--ok)}.p-warn{background:var(--warnbg);color:var(--warn)}.p-bad{background:var(--badbg);color:var(--bad)}.p-info{background:var(--tint);color:var(--blue)}
+label.f{display:grid;gap:4px;font-weight:600;font-size:13px}
+.f input,.f select,.f textarea{font:inherit;font-weight:400;padding:11px 12px;border-radius:11px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.f input:focus,.f select:focus,.f textarea:focus{outline:2px solid var(--blue);border-color:var(--blue)}
+.f.err input,.f.err select,.f.err textarea{border-color:var(--bad)}.ferr{color:var(--bad);font-weight:500;font-size:12px}
+.banner{border-radius:12px;padding:10px 12px;font-size:13px;display:flex;gap:8px}
+.b-bad{background:var(--badbg);color:var(--bad)}.b-ok{background:var(--okbg);color:var(--ok)}.b-warn{background:var(--warnbg);color:var(--warn)}.b-info{background:var(--tint);color:var(--blue)}
+.center{text-align:center;display:grid;justify-items:center;gap:8px;padding:10px 0}
+.big{width:68px;height:68px;border-radius:50%;display:grid;place-items:center}
+.spin{width:44px;height:44px;border:4px solid var(--tint);border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.dots{display:flex;gap:12px;justify-content:center;margin:6px 0}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--blue)}.dots i.on{background:var(--blue)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.keys button{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 0;font-family:var(--fd);font-size:20px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}.kv span{color:var(--muted)}.kv b{text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:5px 11px;font-size:12.5px}.chips button.on{background:var(--brand);color:var(--onbrand);border-color:var(--brand)}
+.up{border:2px dashed var(--line);border-radius:14px;padding:16px;text-align:center;background:var(--card);width:100%;display:grid;gap:4px;justify-items:center}
+.up.done{border-style:solid;border-color:var(--ok);background:var(--okbg);color:var(--ok)}
+.steps{display:grid;gap:8px}.steps div{display:flex;gap:8px;align-items:center}.steps .d{width:20px;height:20px;border-radius:50%;background:var(--tint);display:grid;place-items:center;font-size:11px;color:var(--blue);font-weight:700;flex:none}.steps .d.ok{background:var(--ok);color:#fff}
+.toast{position:absolute;left:16px;right:16px;bottom:76px;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;font-size:13px;z-index:5;box-shadow:0 6px 20px #0004}
+.sel{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;text-align:left;padding:8px 0}
+.cb{width:22px;height:22px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:#fff}.cb.on{background:var(--blue);border-color:var(--blue)}
+.mut{color:var(--muted)}.small{font-size:12px}
+.score{font-family:var(--fd);font-size:44px;font-weight:600;color:var(--blue)}
+.bar{height:8px;border-radius:99px;background:var(--tint);overflow:hidden}.bar i{display:block;height:100%;background:var(--blue)}
+.toggle{width:44px;height:26px;border-radius:99px;background:var(--line);border:0;position:relative;flex:none}.toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}.toggle.on{background:var(--ok)}.toggle.on::after{left:21px}
+</style>
+
+<div class="shell">
+  <aside class="side" id="index"></aside>
+  <div class="phonewrap"><div id="phone"><div id="app"></div></div></div>
+  <div class="rightcol">
+    <section class="side" id="sm"></section>
+    <section class="side" id="ctl" hidden style="display:none"></section>
+  </div>
+</div>
+
+<script>
+/* ---------- data & state ---------- */
+const UCS=[
+ ['user','Register Account','register1'],['user','Verify identity (KYC)','kyc'],['user','Activate wallet','activate'],
+ ['user','Log In','login'],['user','Update profile','profile'],['user','View wallet dashboard','dashboard'],
+ ['user','View credit readiness','credit'],['user','Initiate payment','send'],['user','Authorize payment (PIN/OTP)','pin'],
+ ['user','View transaction history','history'],['user','Raise dispute','dispute1'],
+ ['partner','Onboard partner','onboard1'],['partner','Verify partner credentials','verifyp'],['partner','Process settlement','settle1'],
+ ['analyst','Monitor transaction','monitor'],['analyst','Investigate transaction','investigate'],
+ ['analyst','Flag suspicious transaction','flag'],['analyst','Resolve dispute','resolveq']
+];
+const SCREEN_UC={login:'Log In',register1:'Register Account',register2:'Register Account',kyc:'Verify identity (KYC)',kycdone:'Verify identity (KYC)',activate:'Activate wallet',
+ dashboard:'View wallet dashboard',credit:'View credit readiness',profile:'Update profile',profileEdit:'Update profile',send:'Initiate payment',confirm:'Initiate payment',
+ validating:'Initiate payment',pin:'Authorize payment (PIN/OTP)',pending:'Initiate payment',processing:'Initiate payment',receipt:'Initiate payment',failed:'Initiate payment',cancelled:'Initiate payment',
+ history:'View transaction history',txdetail:'View transaction history',dispute1:'Raise dispute',dispute2:'Raise dispute',dispute3:'Raise dispute',dispute4:'Raise dispute',disputeDup:'Raise dispute',
+ pHome:'Onboard partner',onboard1:'Onboard partner',onboard2:'Onboard partner',verifyp:'Verify partner credentials',onboardDone:'Verify partner credentials',settle1:'Process settlement',settle2:'Process settlement',settle3:'Process settlement',
+ monitor:'Monitor transaction',investigate:'Investigate transaction',flag:'Flag suspicious transaction',flagDone:'Flag suspicious transaction',resolveq:'Resolve dispute',resolve1:'Resolve dispute',resolveDone:'Resolve dispute'};
+const TXSTATE={send:'—',confirm:'—'};
+const S={role:'user',screen:'login',stack:[],balance:1250,walletActive:true,locked:false,walletPending:false,bank:'approve',kyc:'verified',idTry:0,
+ f:{},errs:{},attempts:0,pin:'',otp:false,txState:'—',draft:null,sel:null,toast:'',filter:'All',
+ up:{id:false,selfie:false,lic:false,reg:false},
+ profile:{name:'Sample User',email:'user@student.rmit.edu.au',phone:'+61 400 000 000',address:'1 Example Street, Melbourne VIC 3000',status:'No changes yet',date:'—'},
+ partnerStatus:'Not onboarded',waitlist:false,flagCount:0,
+ txs:[
+  {id:'T-10492',payee:'Liam Chen',amount:-45,status:'Completed',date:'18 Oct',note:'Textbook share'},
+  {id:'T-10488',payee:'Mia Rossi',amount:120,status:'Completed',date:'17 Oct',note:'Rent split'},
+  {id:'T-10475',payee:'Priya Sharma',amount:-30,status:'Pending',date:'16 Oct',note:'Lunch'},
+  {id:'T-10461',payee:'Campus Café',amount:-12.5,status:'Failed',date:'14 Oct',note:'Coffee'},
+  {id:'T-10450',payee:'Noah Brown',amount:-80,status:'Cancelled',date:'12 Oct',note:'Concert ticket'}],
+ disputes:[{ref:'DSP-2038',tx:'T-10401',payee:'Ella Ward',reason:'Wrong amount',status:'Open',by:'User',amount:64,desc:'Charged $64 but we agreed $46.'},
+           {ref:'DSP-2039',tx:'T-10419',payee:'Sam Okafor',reason:'Payment not received',status:'Open',by:'Partner',amount:210,desc:'Settlement not received after 3 days.'}],
+ queue:[{id:'T-10492',payee:'Liam Chen',amount:45},{id:'T-10440',payee:'Zoe Park',amount:18.9},{id:'T-10433',payee:'Ravi Nair',amount:72},{id:'T-10427',payee:'Ana Silva',amount:33.5}],
+ settleSel:{'T-10492':1,'T-10440':1,'T-10433':1,'T-10427':1},batch:null,
+ mon:[{id:'T-10492',from:'Sample User',to:'Liam Chen',amount:45,risk:12,flag:false,note:'Regular peer payment'},
+      {id:'T-10477',from:'Kai Tran',to:'Offshore Trade Ltd',amount:4800,risk:86,flag:false,note:'Large first-time payee, new device'},
+      {id:'T-10471',from:'Mei Lin',to:'Quick Cash Pty',amount:950,risk:64,flag:false,note:'3 payments in 10 minutes'},
+      {id:'T-10466',from:'Jo Park',to:'Sara Cole',amount:60,risk:9,flag:false,note:'Regular peer payment'},
+      {id:'T-10458',from:'Dan Rowe',to:'Gift Cards 24',amount:1200,risk:78,flag:false,note:'High-risk merchant category'}],
+ selMon:null,selDsp:null,dform:{},lastDsp:null,lastFlag:null};
+const $=s=>document.querySelector(s);
+const fmt=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const v=(id,d='')=>esc(S.f[id]??d);
+const ini=n=>n.split(' ').map(x=>x[0]).slice(0,2).join('');
+const IC={home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',flag:'<path d="M5 21V4h11l-2 4 2 4H5"/>',eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',gauge:'<path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/>',check:'<path d="M5 12l5 5 9-10"/>',back:'<path d="M15 5l-7 7 7 7"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',store:'<path d="M4 9l2-5h12l2 5M4 9v11h16V9M4 9h16"/>'};
+const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
+const pill=s=>`<span class="pill ${{Completed:'p-ok',Pending:'p-warn',Failed:'p-bad',Cancelled:'p-bad',Open:'p-warn',Resolved:'p-ok',Flagged:'p-bad'}[s]||'p-info'}">${s}</span>`;
+const field=(id,label,o={})=>`<label class="f ${S.errs[id]?'err':''}">${label}${o.area?`<textarea id="${id}" rows="3" placeholder="${o.ph||''}">${v(id)}</textarea>`:o.sel?`<select id="${id}">${o.sel.map(x=>`<option ${S.f[id]===x?'selected':''}>${x}</option>`).join('')}</select>`:`<input id="${id}" type="${o.type||'text'}" placeholder="${o.ph||''}" value="${v(id,o.def||'')}">`}${S.errs[id]?`<span class="ferr">${S.errs[id]}</span>`:''}</label>`;
+const kv=(a,b)=>`<div class="kv"><span>${a}</span><b>${b}</b></div>`;
+const btn=(t,go,cls='',extra='')=>`<button class="btn ${cls}" ${go.startsWith('a:')?`data-act="${go.slice(2)}"`:`data-go="${go}"`} ${extra}>${t}</button>`;
+const later=(ms,fn,scr)=>setTimeout(()=>{if(S.screen===scr)fn()},ms);
+const need=(ids,m)=>{S.errs={};ids.forEach(i=>{if(!(S.f[i]||'').trim())S.errs[i]=m||'This field is required'});return !Object.keys(S.errs).length};
+
+/* ---------- screens ---------- */
+const R={
+login:()=>({t:'Welcome back',body:`<div class="center"><div class="logo" style="width:56px;height:56px;font-size:22px">V</div><h2>VIChTech Wallet</h2><span class="mut">Wallet &amp; Payments</span></div>
+ ${field('lemail','Email',{def:S.profile.email})}${field('lpw','Password',{type:'password',def:'password123'})}
+ ${btn('Log in','a:login')}${btn('Create an account','register1','sec')}`}),
+register1:()=>({t:'Register account',back:1,body:`<div class="steps"><div><span class="d">1</span><b>Details</b></div></div>
+ ${S.errs.any?`<div class="banner b-bad">${ic('alert',18)} Some required fields are missing. Please complete them.</div>`:''}
+ ${field('rname','Full name',{ph:'e.g. Sample User'})}${field('remail','Email',{ph:'you@example.com',type:'email'})}${field('rphone','Mobile number',{ph:'+61 4xx xxx xxx'})}
+ ${field('rbiz','Business name (optional)',{ph:'Trading name, if any'})}${field('rpw','Create password',{type:'password'})}
+ ${btn('Continue','a:reg1')}`}),
+register2:()=>({t:'Verify your identity',back:1,body:`<div class="steps"><div><span class="d ok">✓</span>Details</div><div><span class="d">2</span><b>ID document and selfie</b></div></div>
+ <div class="banner b-info">Your ID goes to our KYC provider for document and biometric matching.</div>
+ ${S.errs.id?`<div class="banner b-bad">${ic('alert',18)} ${S.errs.id}</div>`:''}
+ <button class="up ${S.up.id?'done':''}" data-act="upid">${ic('list')}<b>${S.up.id?'passport_scan.jpg uploaded':'Upload ID document'}</b><span class="small">${S.up.id?'Tap to replace':'Passport or driver licence'}</span></button>
+ <button class="up ${S.up.selfie?'done':''}" data-act="upselfie">${ic('user')}<b>${S.up.selfie?'selfie.jpg uploaded':'Take a selfie'}</b><span class="small">${S.up.selfie?'Tap to replace':'Used for biometric matching'}</span></button>
+ ${btn('Submit registration','a:reg2',S.up.id&&S.up.selfie?'':'',S.up.id&&S.up.selfie?'':'disabled')}`}),
+kyc:()=>({t:'Checking your details',body:`<div class="center"><div class="spin"></div><b>Verifying identity</b></div><div class="card steps">
+ <div><span class="d ok">✓</span>Form validated for completeness</div><div><span class="d ok">✓</span>Document and selfie sent to KYC provider</div><div><span class="d">…</span>Consolidating results</div></div>`}),
+kycdone:()=>{const k=S.kyc;const m={verified:['b-ok','check','Identity verified','Your KYC status is verified and a pending wallet has been created. Activate it to start sending money.'],
+ review:['b-warn','clock','Under manual review','Your application was queued for manual review. A compliance officer will approve or reject it and we will notify you.'],
+ rejected:['b-bad','alert','Application rejected','We could not verify your identity. You can resubmit corrected documents.']}[k];
+ return {t:'KYC outcome',body:`<div class="center"><div class="big ${m[0]}">${ic(m[1],34)}</div><h2>${m[2]}</h2><p class="mut">${m[3]}</p></div>
+ <div class="banner b-info">${ic('shield',18)} Notification sent: "Your KYC outcome is ${k==='review'?'pending review':k}".</div>
+ ${k==='verified'?btn('Continue to activate wallet','activate'):k==='rejected'?btn('Resubmit documents','register2'):btn('Back to log in','login','sec')}`}},
+activate:()=>({t:'Activate wallet',body:`<div class="card wallet"><small>VIChTech Wallet</small><div class="bal">${fmt(0)}</div><span class="chipst" style="background:#ffffff33;color:#fff">${S.walletPending?'Pending activation':'Active'}</span></div>
+ <div class="card">${kv('KYC status','Verified')}${kv('Wallet currency','AUD')}${kv('Wallet status',S.walletPending?'Pending':'Active')}</div>
+ ${S.walletPending?btn('Activate wallet','a:activate'):btn('Go to dashboard','dashboard')}`}),
+dashboard:()=>({t:'Wallet',tabs:'user',body:S.walletActive?`<div class="card wallet"><small>Available balance</small><div class="bal">${fmt(S.balance)}</div><span class="chipst" style="background:#ffffff33;color:#fff">Active</span></div>
+ <div class="grid2"><button class="act" data-go="send">${ic('send')}Send money</button><button class="act" data-go="history">${ic('clock')}Transactions</button>
+ <button class="act" data-go="credit">${ic('gauge')}Credit readiness</button><button class="act" data-go="history" data-dsp="1">${ic('flag')}Raise dispute</button></div>
+ <div class="card"><b>Recent activity</b>${S.txs.slice(0,3).map(t=>txrow(t)).join('')}<button class="btn sec" style="margin-top:8px" data-go="history">See all transactions</button></div>`
+ :`<div class="banner b-bad">${ic('alert',18)}<div><b>Wallet inactive</b><br>${S.locked?'Your wallet was locked after 3 failed PIN attempts. Re-verify by SMS/email to unblock.':'Your wallet is not active, so the dashboard cannot be shown.'}</div></div>${btn('Re-verify and unlock','a:unlock')}`}),
+credit:()=>({t:'Credit readiness',back:1,body:`<div class="card center"><span class="mut">Your credit readiness</span><div class="score">B+</div><b>Good standing</b><div class="bar" style="width:100%"><i style="width:72%"></i></div></div>
+ <div class="card">${kv('Account age','14 months')}${kv('On-time payments','98%')}${kv('Wallet activity','Regular')}</div>
+ <div class="card" style="display:flex;align-items:center;gap:12px"><div style="flex:1"><b>Join the credit waitlist</b><div class="small mut">Get notified when credit products open.</div></div><button class="toggle ${S.waitlist?'on':''}" data-act="waitlist" aria-label="Waitlist"></button></div>`}),
+profile:()=>({t:'Profile',tabs:'user',body:`${S.profile.status!=='No changes yet'?`<div class="banner b-ok">${ic('check',18)} Profile updated successfully.</div>`:''}
+ <div class="center"><div class="av" style="width:64px;height:64px;font-size:22px">${ini(S.profile.name)}</div><b>${esc(S.profile.name)}</b></div>
+ <div class="card">${kv('Email',esc(S.profile.email))}${kv('Phone',esc(S.profile.phone))}${kv('Address',esc(S.profile.address))}${kv('Update status',S.profile.status)}${kv('Last updated',S.profile.date)}</div>
+ ${btn('Edit profile','a:editprofile')}${btn('Log out','a:logout','ghost')}`}),
+profileEdit:()=>({t:'Edit profile',back:1,body:`${field('pname','Name',{def:S.profile.name})}${field('pemail','Email',{def:S.profile.email})}${field('pphone','Phone number',{def:S.profile.phone})}${field('paddr','Address',{def:S.profile.address})}
+ <div class="btnrow">${btn('Cancel','profile','ghost')}${btn('Save changes','a:saveprofile')}</div>`}),
+send:()=>({t:'Send money',tabs:'user',body:`<div class="chips">${['Liam Chen','Mia Rossi','Priya Sharma'].map(n=>`<button data-act="payee" data-v="${n}">${n}</button>`).join('')}</div>
+ ${field('payee','Pay to',{ph:'Name, email or mobile'})}${field('amount','Amount (AUD)',{ph:'0.00',type:'number'})}${field('note','Note (optional)',{ph:'What is it for?'})}
+ <div class="mut small">Available: ${fmt(S.balance)}</div>${btn('Review payment','a:review')}`}),
+confirm:()=>({t:'Confirm payment',back:1,state:'Initiated',body:`<div class="card">${kv('To',esc(S.draft.payee))}${kv('Amount',fmt(S.draft.amount))}${kv('Note',esc(S.draft.note||'—'))}${kv('Transaction ID',S.draft.id)}</div>
+ <div class="banner b-info">${ic('shield',18)} We check your wallet and balance first, then ask for your PIN.</div>${btn('Confirm and send','a:confirm')}`}),
+validating:()=>({t:'Checking wallet',state:'Validating',body:`<div class="center"><div class="spin"></div><b>Validating payment</b></div><div class="card steps">
+ <div><span class="d ok">✓</span>Loading account details</div><div><span class="d ok">✓</span>Verifying wallet is active</div><div><span class="d">…</span>Fetching wallet balance</div></div>`}),
+pin:()=>({t:'Authorize payment',back:1,state:'Authorizing',body:`<div class="center"><b>Enter your PIN</b><span class="mut small">Authorizing ${fmt(S.draft.amount)} to ${esc(S.draft.payee)}</span></div>
+ <div class="dots">${[0,1,2,3].map(i=>`<i class="${i<S.pin.length?'on':''}"></i>`).join('')}</div>
+ ${S.errs.pin?`<div class="banner b-bad">${ic('alert',18)} ${S.errs.pin}</div>`:`<div class="small mut center">Attempt ${S.attempts+1} of 3 · Demo PIN 1234</div>`}
+ <div class="keys">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="key" data-v="${n}">${n}</button>`).join('')}<button data-act="otp" class="small">Send OTP</button><button data-act="key" data-v="0">0</button><button data-act="del">⌫</button></div>`}),
+pending:()=>({t:'Payment pending',state:'Pending',body:`<div class="center"><div class="spin"></div><b>Ledger entries created</b><span class="mut">Status set to Pending</span></div>
+ <div class="card">${kv('Debit',esc('Sample User  '+fmt(-S.draft.amount)))}${kv('Credit',esc(S.draft.payee+'  '+fmt(S.draft.amount)))}${kv('Status','Pending')}</div>`}),
+processing:()=>({t:'Processing',state:'Processing',body:`<div class="center"><div class="spin"></div><b>Sending to VIChTech banking system</b><span class="mut">Waiting for the bank to confirm</span></div>`}),
+receipt:()=>({t:'Payment complete',state:'Completed',body:`<div class="center"><div class="big b-ok">${ic('check',34)}</div><h2>${fmt(S.draft.amount)} sent</h2><span class="mut">to ${esc(S.draft.payee)}</span></div>
+ <div class="card">${kv('Transaction ID',S.draft.id)}${kv('Status','Completed')}${kv('New balance',fmt(S.balance))}${kv('Settlement','Queued for next run')}</div>
+ <div class="banner b-ok">${ic('send',18)} Receipt sent. ${esc(S.draft.payee)} has been notified.</div>${btn('Back to wallet','dashboard')}`}),
+failed:()=>({t:'Payment failed',state:'Failed',body:`<div class="center"><div class="big b-bad">${ic('alert',34)}</div><h2>${esc(S.failMsg[0])}</h2><span class="mut">${esc(S.failMsg[1])}</span></div>
+ <div class="banner b-bad">Nothing was sent to the bank and no money moved.</div>${btn('Back to wallet','dashboard')}${btn('Try again','send','sec')}`}),
+cancelled:()=>({t:'Payment cancelled',state:'Cancelled',body:`<div class="center"><div class="big b-bad">${ic('alert',34)}</div><h2>Bank declined the payment</h2><span class="mut">Pending ledger entries were reversed. Your balance is unchanged at ${fmt(S.balance)}.</span></div>
+ <div class="banner b-bad">We have notified you that the payment failed.</div>${btn('Back to wallet','dashboard')}`}),
+history:()=>({t:'Transactions',tabs:'user',body:`<div class="chips">${['All','Completed','Pending','Failed','Cancelled'].map(f=>`<button class="${S.filter===f?'on':''}" data-act="filter" data-v="${f}">${f}</button>`).join('')}</div>
+ <div class="card">${S.txs.filter(t=>S.filter==='All'||t.status===S.filter).map(txrow).join('')||'<span class="mut">No transactions</span>'}</div>`}),
+txdetail:()=>{const t=S.txs.find(x=>x.id===S.sel);return {t:'Transaction',back:1,body:`<div class="card center"><div class="av">${ini(t.payee)}</div><b>${esc(t.payee)}</b><div class="amt ${t.amount>0?'in':''}" style="font-size:26px">${fmt(t.amount)}</div>${pill(t.status)}</div>
+ <div class="card">${kv('Transaction ID',t.id)}${kv('Date',t.date+' 2026')}${kv('Note',esc(t.note))}</div>
+ ${btn('Raise dispute','a:startdispute','sec')}`}},
+dispute1:()=>({t:'Select transaction',back:1,body:`<div class="banner b-info">Step 1 of 4 · Choose the transaction you want to dispute.</div><div class="card">${S.txs.map(t=>`<button class="row" data-act="pickdsp" data-v="${t.id}"><div class="av">${ini(t.payee)}</div><div class="grow"><b>${esc(t.payee)}</b><small>${t.id} · ${t.date}</small></div><span class="amt">${fmt(t.amount)}</span></button>`).join('')}</div>`}),
+dispute2:()=>{const t=S.txs.find(x=>x.id===S.sel);const r=S.f.dreason||'';const extra={'Payment not received':'When did you expect it?','Wrong amount':'Amount you expected','Unauthorized payment':'When did you notice it?','Service not as agreed':'What was agreed?'}[r];
+ return {t:'Raise dispute',back:1,body:`<div class="card">${kv('Transaction',t.id+' · '+esc(t.payee))}${kv('Amount',fmt(t.amount))}</div>
+ ${S.errs.any?`<div class="banner b-bad">${ic('alert',18)} Some required information is missing and has been marked.</div>`:''}
+ <label class="f ${S.errs.dreason?'err':''}">Dispute reason<select id="dreason" data-live="1"><option value="">Select a reason…</option>${['Payment not received','Wrong amount','Unauthorized payment','Service not as agreed'].map(x=>`<option ${r===x?'selected':''}>${x}</option>`).join('')}</select>${S.errs.dreason?`<span class="ferr">${S.errs.dreason}</span>`:''}</label>
+ ${extra?field('dextra',extra):''}${field('ddesc','Describe the issue',{area:1,ph:'What went wrong?'})}
+ <button class="up ${S.f.devid?'done':''}" data-act="devid">${ic('list')}<b>${S.f.devid?'screenshot.png attached':'Attach evidence (optional)'}</b></button>${btn('Review dispute','a:dreview')}`}},
+dispute3:()=>{const t=S.txs.find(x=>x.id===S.sel);return {t:'Check your dispute',back:1,body:`<div class="banner b-info">Step 4 of 4 · Please verify your dispute before submitting.</div>
+ <div class="card">${kv('Transaction',t.id)}${kv('Reason',esc(S.f.dreason))}${S.f.dextra?kv('Detail',esc(S.f.dextra)):''}${kv('Description',esc(S.f.ddesc))}${kv('Evidence',S.f.devid?'screenshot.png':'None')}</div>
+ <div class="btnrow">${btn('Edit','dispute2','ghost')}${btn('Submit dispute','a:dsubmit')}</div>`}},
+dispute4:()=>({t:'Dispute submitted',body:`<div class="center"><div class="big b-ok">${ic('check',34)}</div><h2>Dispute recorded</h2><span class="mut">Reference <b>${S.lastDsp.ref}</b></span></div>
+ <div class="card">${kv('Linked transaction',S.lastDsp.tx)}${kv('Status','Open / Pending investigation')}${kv('Risk Analyst','Notified')}</div>
+ <div class="banner b-ok">${ic('send',18)} Confirmation notification sent to you.</div>${btn('Back to wallet','dashboard')}`}),
+disputeDup:()=>({t:'Already disputed',back:1,body:`<div class="center"><div class="big b-warn">${ic('alert',34)}</div><h2>Dispute already raised</h2><span class="mut">A dispute for transaction ${S.sel} was already submitted (${S.lastDsp?S.lastDsp.ref:'DSP-2040'}). You cannot raise it again.</span></div>${btn('Back to transactions','history')}`}),
+pHome:()=>({t:'Partner portal',body:`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><div><b>Campus Café Pty Ltd</b><div class="small mut">Partner / Agent</div></div>${pill(S.partnerStatus==='Verified'?'Completed':'Pending').replace(/Completed|Pending/,S.partnerStatus)}</div></div>
+ <div class="grid2"><button class="act" data-go="onboard1">${ic('store')}Onboard partner</button><button class="act" data-go="settle1">${ic('list')}Process settlement</button></div>`}),
+onboard1:()=>({t:'Onboard partner',back:1,body:`<div class="steps"><div><span class="d">1</span><b>Business details</b></div></div>${S.errs.any?`<div class="banner b-bad">${ic('alert',18)} Please complete the missing fields.</div>`:''}
+ ${field('bname','Business name',{def:'Campus Café Pty Ltd'})}${field('btype','Partner type',{sel:['Merchant','Agent']})}${field('breg','Business registration number',{def:'51 824 753 556'})}${field('bemail','Contact email',{def:'hello@campuscafe.com.au'})}${btn('Continue','a:ob1')}`}),
+onboard2:()=>({t:'Upload credentials',back:1,body:`<div class="steps"><div><span class="d ok">✓</span>Business details</div><div><span class="d">2</span><b>Credentials</b></div></div>
+ <button class="up ${S.up.lic?'done':''}" data-act="uplic">${ic('list')}<b>${S.up.lic?'business_licence.pdf uploaded':'Upload partner licence'}</b></button>
+ <button class="up ${S.up.reg?'done':''}" data-act="upreg">${ic('list')}<b>${S.up.reg?'registration_cert.pdf uploaded':'Upload registration certificate'}</b></button>${btn('Submit for verification','a:ob2',S.up.lic&&S.up.reg?'':'',S.up.lic&&S.up.reg?'':'disabled')}`}),
+verifyp:()=>({t:'Verify credentials',body:`<div class="center"><div class="spin"></div><b>Verifying partner credentials</b></div><div class="card steps"><div><span class="d ok">✓</span>Registration number valid</div><div><span class="d ok">✓</span>Partner licence checked</div><div><span class="d">…</span>Credit history score</div></div>`}),
+onboardDone:()=>({t:'Partner verified',body:`<div class="center"><div class="big b-ok">${ic('check',34)}</div><h2>You are verified</h2><span class="mut">Campus Café Pty Ltd can now receive settlements.</span></div><div class="card">${kv('Partner type',esc(S.f.btype||'Merchant'))}${kv('Credit history score','742')}${kv('Status','Verified')}</div>${btn('Go to partner portal','pHome')}`}),
+settle1:()=>{const n=S.queue.filter(q=>S.settleSel[q.id]);const tot=n.reduce((a,q)=>a+q.amount,0);return {t:'Process settlement',back:1,body:`<div class="banner b-info">Completed payments waiting for the next settlement run.</div>
+ <div class="card">${S.queue.map(q=>`<button class="sel" data-act="selq" data-v="${q.id}"><span class="cb ${S.settleSel[q.id]?'on':''}">${S.settleSel[q.id]?ic('check',14):''}</span><div class="grow" style="flex:1"><b>${esc(q.payee)}</b><div class="small mut">${q.id}</div></div><span class="amt">${fmt(q.amount)}</span></button>`).join('')}</div>
+ <div class="card">${kv('Selected',n.length+' transactions')}${kv('Batch total',fmt(tot))}</div>${btn('Review settlement','a:settle1',n.length?'':'','')}`}},
+settle2:()=>{const n=S.queue.filter(q=>S.settleSel[q.id]);const tot=n.reduce((a,q)=>a+q.amount,0);return {t:'Confirm settlement',back:1,body:`<div class="card">${kv('Transactions',n.length)}${kv('Total',fmt(tot))}${kv('Sent to','VIChTech banking system')}</div><div class="btnrow">${btn('Cancel','settle1','ghost')}${btn('Process settlement','a:settle2')}</div>`}},
+settle3:()=>({t:'Settlement complete',body:`<div class="center"><div class="big b-ok">${ic('check',34)}</div><h2>Settlement confirmed</h2><span class="mut">Batch ${S.batch.id}</span></div><div class="card">${kv('Transactions',S.batch.n)}${kv('Total settled',fmt(S.batch.tot))}${kv('Status','Confirmed by banking system')}</div>${btn('Back to partner portal','pHome')}`}),
+monitor:()=>({t:'Monitor transactions',tabs:'analyst',body:`<div class="chips">${['All','Flagged'].map(f=>`<button class="${S.filter===f?'on':''}" data-act="filter" data-v="${f}">${f}</button>`).join('')}</div>
+ <div class="card">${S.mon.filter(m=>S.filter!=='Flagged'||m.flag).map(m=>`<button class="row" data-act="pickmon" data-v="${m.id}"><div class="grow"><b>${esc(m.from)} → ${esc(m.to)}</b><small>${m.id}</small></div><div style="text-align:right"><div class="amt">${fmt(m.amount)}</div>${m.flag?pill('Flagged'):`<span class="pill ${m.risk>=60?'p-bad':m.risk>=30?'p-warn':'p-ok'}">Risk ${m.risk}</span>`}</div></button>`).join('')||'<span class="mut">None flagged yet</span>'}</div>`}),
+investigate:()=>{const m=S.mon.find(x=>x.id===S.selMon);return {t:'Investigate',back:1,body:`<div class="card center"><div class="amt" style="font-size:26px">${fmt(m.amount)}</div><span class="mut">${esc(m.from)} → ${esc(m.to)}</span><span class="pill ${m.risk>=60?'p-bad':'p-ok'}">Risk score ${m.risk}</span></div>
+ <div class="card"><b>Risk factors</b><div class="small mut" style="margin-top:4px">${esc(m.note)}</div>${kv('Transaction',m.id)}${kv('Device','Phone · new')}${kv('Location','Melbourne, AU')}</div>
+ ${m.flag?`<div class="banner b-bad">${ic('flag',18)} Already flagged as suspicious.</div>`:btn('Flag as suspicious','flag','bad')}${btn('Mark as cleared','a:clear','ghost')}`}},
+flag:()=>({t:'Flag suspicious',back:1,body:`<div class="banner b-warn">Flagging opens an investigation case and notifies compliance.</div>${field('freason','Reason',{sel:['Unusual amount','Rapid repeat payments','High-risk payee','Possible account takeover']})}${field('fnote','Note',{area:1,ph:'Add details for the case'})}${btn('Flag transaction','a:flagit','bad')}`}),
+flagDone:()=>({t:'Transaction flagged',body:`<div class="center"><div class="big b-bad">${ic('flag',34)}</div><h2>Marked suspicious</h2><span class="mut">Investigation case ${S.lastFlag.inv} opened.</span></div><div class="card">${kv('Transaction',S.lastFlag.id)}${kv('Reason',esc(S.lastFlag.reason))}${kv('Status','Under investigation')}</div>${btn('Back to monitor','monitor')}`}),
+resolveq:()=>({t:'Disputes',tabs:'analyst',body:`<div class="card">${S.disputes.map(d=>`<button class="row" data-act="pickdsp2" data-v="${d.ref}"><div class="grow"><b>${esc(d.reason)}</b><small>${d.ref} · ${d.tx} · by ${d.by}</small></div>${pill(d.status)}</button>`).join('')}</div>`}),
+resolve1:()=>{const d=S.disputes.find(x=>x.ref===S.selDsp);return {t:'Resolve dispute',back:1,body:`<div class="card">${kv('Reference',d.ref)}${kv('Transaction',d.tx+' · '+esc(d.payee))}${kv('Amount',fmt(d.amount))}${kv('Raised by',d.by)}${kv('Reason',esc(d.reason))}<div class="small mut" style="padding-top:6px">${esc(d.desc)}</div></div>
+ ${d.status==='Resolved'?`<div class="banner b-ok">${ic('check',18)} Resolved: ${esc(d.outcome)}</div>`:`${field('rdec','Decision',{sel:['Refund the user','Reject the dispute','Request more evidence']})}${field('rnote','Resolution notes',{area:1,ph:'Explain the decision'})}${btn('Record resolution','a:resolve')}`}`}},
+resolveDone:()=>({t:'Dispute resolved',body:`<div class="center"><div class="big b-ok">${ic('check',34)}</div><h2>Resolution recorded</h2><span class="mut">${S.selDsp} · ${esc(S.f.rdec||'')}</span></div><div class="banner b-ok">${ic('send',18)} The user has been notified of the outcome.</div>${btn('Back to disputes','resolveq')}`}),
+};
+function txrow(t){return `<button class="row" data-go="txdetail" data-sel="${t.id}"><div class="av">${ini(t.payee)}</div><div class="grow"><b>${esc(t.payee)}</b><small>${t.date} · ${t.id}</small></div><div style="text-align:right"><div class="amt ${t.amount>0?'in':''}">${fmt(t.amount)}</div>${pill(t.status)}</div></button>`}
+
+/* ---------- navigation & rendering ---------- */
+const TABS={user:[['dashboard','home','Home'],['send','send','Send'],['history','clock','History'],['profile','user','Profile']],analyst:[['monitor','eye','Monitor'],['resolveq','flag','Disputes']]};
+function setState(s){S.txState=s}
+function render(){
+  const r=R[S.screen]();
+  if(r.state)setState(r.state);
+  const ucName=SCREEN_UC[S.screen];
+  $('#app').innerHTML=`<div class="sbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+   <div class="hdr">${r.back?`<button class="back" data-act="back" aria-label="Back">${ic('back',18)}</button>`:''}<h1>${r.t}</h1>${r.state?`<span class="chipst">${r.state}</span>`:''}</div>
+   <div id="body" data-screen="${S.screen}">${r.body}</div>
+   ${r.tabs?`<nav class="tabs">${TABS[r.tabs].map(t=>`<button class="${S.screen===t[0]?'on':''}" data-go="${t[0]}">${ic(t[1],20)}${t[2]}</button>`).join('')}</nav>`:''}
+   ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}`;
+  renderSide(ucName);
+}
+function renderSide(cur){
+  const groups={user:'User',partner:'Partner / Agent',analyst:'Risk Analyst'};
+  $('#index').innerHTML=`<div class="brandrow"><div class="logo">V</div><div><b>VIChTech Wallet</b><small>Clickable prototype · Sprint 3</small></div></div>
+   <h2>Use Case Diagram</h2>${Object.keys(groups).map(g=>`<div class="actor">${groups[g]}</div>${UCS.filter(u=>u[0]===g).map(u=>`<button class="uc ${cur===u[1]?'cur':''}" data-jump="${u[2]}">${u[1]}</button>`).join('')}`).join('')}
+   <p class="hint">Tap a use case to open its screen. Actors KYC Provider and VIChTech banking system are external systems shown inside the flows.</p>`;
+  const st=S.txState;const on=n=>st===n?'on':'';
+  $('#sm').innerHTML=`<h2>Transaction state (Initiate payment)</h2><div class="sm">
+   <div class="st ${on('Initiated')}"><b>Initiated</b><span>entry / generateTransactionID()</span></div>
+   <div class="comp"><em>PaymentVerification</em><div class="st ${on('Validating')}"><b>Validating</b><span>entry / verify account details · do / fetchWalletBalance()</span></div>
+    <div class="st ${on('Authorizing')}"><b>Authorizing</b><span>do / verifyPIN() · [invalid PIN, attempts &lt; 3] / promptRetry()</span></div></div>
+   <div class="st ${on('Pending')}"><b>Pending</b><span>entry / updateStatusToPending()</span></div>
+   <div class="st ${on('Processing')}"><b>Processing</b><span>do / sendGatewayRequest()</span></div>
+   <div class="st good ${on('Completed')}"><b>Completed</b><span>exit / sendPaymentReceipt()</span></div>
+   <div class="st fail ${on('Cancelled')}"><b>Cancelled</b><span>[payment declined by bank] / do undoTransaction()</span></div>
+   <div class="st fail ${on('Failed')}"><b>Failed</b><span>[wallet inactive or balance &lt; amount] · [3 failed PINs] / lockWallet()</span></div></div>
+   <p class="hint">Current state: <b>${st}</b>. Matches the submitted state machine diagram.</p>`;
+  $('#ctl').innerHTML=`<h2>Prototype controls</h2><div class="ctl"><p class="hint" style="margin:0">Not part of the app. They let a reviewer trigger each exception path.</p>
+   <label>Wallet status<select data-ctl="wallet"><option value="1" ${S.walletActive?'selected':''}>Active</option><option value="0" ${!S.walletActive?'selected':''}>Inactive</option></select></label>
+   <label>Bank response<select data-ctl="bank"><option value="approve" ${S.bank==='approve'?'selected':''}>Approves payment</option><option value="decline" ${S.bank==='decline'?'selected':''}>Declines payment</option></select></label>
+   <label>KYC outcome<select data-ctl="kyc"><option value="verified" ${S.kyc==='verified'?'selected':''}>Verified</option><option value="review" ${S.kyc==='review'?'selected':''}>Manual review</option><option value="rejected" ${S.kyc==='rejected'?'selected':''}>Rejected</option><option value="unreadable" ${S.kyc==='unreadable'?'selected':''}>Unreadable ID (first upload)</option></select></label></div>`;
+}
+function go(id,push=true){if(push)S.stack.push(S.screen);S.screen=id;S.errs={};S.toast='';render();const b=$('#body');if(b)b.scrollTop=0;auto()}
+function back(){const p=S.stack.pop();if(p)go(p,false)}
+function toast(m){S.toast=m;render();setTimeout(()=>{S.toast='';if(!document.hidden)render()},2200)}
+function auto(){
+  const s=S.screen;
+  if(s==='kyc')later(1400,()=>{if(S.kyc==='unreadable')S.kyc='verified';go('kycdone')},s);
+  if(s==='validating')later(1300,()=>{const a=S.draft.amount;if(!S.walletActive){S.failMsg=['Wallet inactive','Your wallet is not active, so this payment cannot be sent.'];go('failed')}else if(a>S.balance){S.failMsg=['Insufficient funds','Your balance of '+fmt(S.balance)+' is lower than '+fmt(a)+'.'];go('failed')}else{S.attempts=0;S.pin='';go('pin')}},s);
+  if(s==='pending')later(1400,()=>go('processing'),s);
+  if(s==='processing')later(1700,()=>{
+    if(S.bank==='decline'){S.txs.unshift({id:S.draft.id,payee:S.draft.payee,amount:-S.draft.amount,status:'Cancelled',date:'21 Oct',note:S.draft.note||'—'});go('cancelled')}
+    else{S.balance=+(S.balance-S.draft.amount).toFixed(2);S.txs.unshift({id:S.draft.id,payee:S.draft.payee,amount:-S.draft.amount,status:'Completed',date:'21 Oct',note:S.draft.note||'—'});S.queue.push({id:S.draft.id,payee:S.draft.payee,amount:S.draft.amount});S.settleSel[S.draft.id]=1;S.mon.unshift({id:S.draft.id,from:S.profile.name,to:S.draft.payee,amount:S.draft.amount,risk:14,flag:false,note:'Regular peer payment'});go('receipt')}},s);
+  if(s==='verifyp')later(1500,()=>{S.partnerStatus='Verified';go('onboardDone')},s);
+}
+function setRole(r){S.role=r;S.stack=[];go(r==='user'?'dashboard':r==='partner'?'pHome':'monitor',false)}
+function jump(id){
+  const role=UCS.find(u=>u[2]===id)[0];S.role=role;S.stack=[];S.errs={};S.f={};S.filter='All';
+  if(['pin','validating','confirm','pending','processing'].includes(id)||id==='pin'){S.draft={id:'T-10493',payee:'Liam Chen',amount:45,note:'Textbook share'};S.attempts=0;S.pin=''}
+  if(id==='dispute1'){S.sel='T-10492'}
+  if(id==='activate'){S.walletPending=true}
+  if(id==='investigate'||id==='flag'){S.selMon=S.selMon||'T-10477'}
+  if(id==='kyc'){}
+  go(id,false);
+}
+/* ---------- actions ---------- */
+function act(a,el){
+  const V=el.dataset.v;
+  switch(a){
+  case 'back':back();break;
+  case 'login':S.profile.email=($('#lemail')||{}).value||S.profile.email;go('dashboard',false);break;
+  case 'logout':go('login',false);break;
+  case 'filter':S.filter=V;render();break;
+  case 'reg1':if(need(['rname','remail','rphone','rpw'])){go('register2')}else{S.errs.any=1;render()}break;
+  case 'upid':if(S.kyc==='unreadable'&&!S.up.id){S.errs.id='We could not read that document. Please upload it again.';S.kyc='verified';S.up.id=false}else{S.up.id=true;S.errs={}}render();break;
+  case 'upselfie':S.up.selfie=true;render();break;
+  case 'reg2':S.walletPending=S.kyc==='verified';go('kyc');break;
+  case 'activate':S.walletPending=false;S.walletActive=true;S.locked=false;toast('Wallet activated');break;
+  case 'unlock':S.walletActive=true;S.locked=false;S.attempts=0;toast('Wallet unlocked');break;
+  case 'waitlist':S.waitlist=!S.waitlist;render();break;
+  case 'editprofile':go('profileEdit');break;
+  case 'saveprofile':{S.errs={};const e=($('#pemail')||{}).value||'';if(!(S.f.pname??S.profile.name).trim())S.errs.pname='Name is required';if(!/.+@.+\..+/.test(S.f.pemail??S.profile.email))S.errs.pemail='Enter a valid email address';
+    if(Object.keys(S.errs).length){render();break}
+    S.profile.name=S.f.pname??S.profile.name;S.profile.email=S.f.pemail??S.profile.email;S.profile.phone=S.f.pphone??S.profile.phone;S.profile.address=S.f.paddr??S.profile.address;S.profile.status='Updated';S.profile.date='21 Oct 2026';S.stack=[];go('profile',false);break}
+  case 'payee':S.f.payee=V;render();break;
+  case 'review':{if(!need(['payee','amount']))return render();const a=parseFloat(S.f.amount);if(!(a>0)){S.errs.amount='Enter an amount greater than 0';return render()}
+    S.draft={id:'T-'+(10493+S.txs.filter(t=>+t.id.slice(2)>10492).length),payee:S.f.payee,amount:a,note:S.f.note||''};go('confirm');break}
+  case 'confirm':S.attempts=0;S.pin='';go('validating');break;
+  case 'key':if(S.pin.length<4){S.pin+=V;S.errs={};render();if(S.pin.length===4)setTimeout(checkPin,250)}break;
+  case 'del':S.pin=S.pin.slice(0,-1);render();break;
+  case 'otp':S.otp=true;toast('OTP sent. Demo code: 4829');break;
+  case 'startdispute':S.f={};S.dform={};go('dispute2');break;
+  case 'pickdsp':S.sel=V;S.f={};go('dispute2');break;
+  case 'devid':S.f.devid=!S.f.devid;render();break;
+  case 'dreview':{S.errs={};if(!S.f.dreason)S.errs.dreason='Select a reason';if(!(S.f.ddesc||'').trim())S.errs.ddesc='Describe the issue';if(S.f.dreason&&!(S.f.dextra||'').trim())S.errs.dextra='This field is required';
+    if(Object.keys(S.errs).length){S.errs.any=1;return render()}
+    if(S.disputes.some(d=>d.tx===S.sel)){S.lastDsp=S.disputes.find(d=>d.tx===S.sel);return go('disputeDup')}go('dispute3');break}
+  case 'dsubmit':{const t=S.txs.find(x=>x.id===S.sel);S.lastDsp={ref:'DSP-'+(2040+S.disputes.length-2),tx:S.sel,payee:t.payee,reason:S.f.dreason,status:'Open',by:'User',amount:Math.abs(t.amount),desc:S.f.ddesc};S.disputes.unshift(S.lastDsp);S.stack=[];go('dispute4',false);break}
+  case 'ob1':{const D={bname:'Campus Café Pty Ltd',breg:'51 824 753 556',bemail:'hello@campuscafe.com.au'};S.errs={};Object.keys(D).forEach(k=>{if(!(S.f[k]??D[k]).trim())S.errs[k]='This field is required'});if(Object.keys(S.errs).length){S.errs.any=1;render()}else{go('onboard2')}break}
+  case 'uplic':S.up.lic=true;render();break;case 'upreg':S.up.reg=true;render();break;
+  case 'ob2':go('verifyp');break;
+  case 'selq':S.settleSel[V]=S.settleSel[V]?0:1;render();break;
+  case 'settle1':if(S.queue.some(q=>S.settleSel[q.id]))go('settle2');else toast('Select at least one transaction');break;
+  case 'settle2':{const n=S.queue.filter(q=>S.settleSel[q.id]);S.batch={id:'ST-3301',n:n.length,tot:n.reduce((a,q)=>a+q.amount,0)};S.queue=S.queue.filter(q=>!S.settleSel[q.id]);S.settleSel={};S.stack=[];go('settle3',false);break}
+  case 'pickmon':S.selMon=V;go('investigate');break;
+  case 'clear':toast('Marked as cleared');break;
+  case 'flagit':{const m=S.mon.find(x=>x.id===S.selMon);m.flag=true;S.flagCount++;S.lastFlag={id:m.id,reason:S.f.freason||'Unusual amount',inv:'INV-88'+(1+S.flagCount)};S.stack=[];go('flagDone',false);break}
+  case 'pickdsp2':S.selDsp=V;go('resolve1');break;
+  case 'resolve':{const d=S.disputes.find(x=>x.ref===S.selDsp);d.status='Resolved';d.outcome=S.f.rdec||'Refund the user';go('resolveDone',false);break}
+  }
+}
+function checkPin(){
+  const ok=S.pin==='1234'||(S.otp&&S.pin==='4829');
+  if(ok){S.errs={};go('pending')}
+  else{S.attempts++;S.pin='';
+    if(S.attempts>=3){S.walletActive=false;S.locked=true;S.failMsg=['Wallet locked','Too many incorrect PIN attempts. Your wallet is temporarily locked.'];go('failed')}
+    else{S.errs.pin='Invalid PIN. '+(3-S.attempts)+' attempt'+(3-S.attempts===1?'':'s')+' left. Please try again.';render()}}
+}
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const j=e.target.closest('[data-jump]');if(j){jump(j.dataset.jump);return}
+  const el=e.target.closest('[data-act],[data-go]');if(!el)return;
+  if(el.dataset.act){act(el.dataset.act,el);return}
+  if(el.dataset.sel)S.sel=el.dataset.sel;
+  if(el.dataset.dsp){S.f={};go('dispute1');return}
+  const tabs=el.closest('.tabs');if(tabs)S.stack=[];
+  go(el.dataset.go);
+});
+document.addEventListener('input',e=>{const t=e.target;if(t.id&&t.closest('#app')){S.f[t.id]=t.value}});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.ctl){const k=t.dataset.ctl;if(k==='wallet')S.walletActive=t.value==='1';if(k==='bank')S.bank=t.value;if(k==='kyc'){S.kyc=t.value;S.up.id=false}renderSide(SCREEN_UC[S.screen]);return}
+  if(t.dataset.live){S.f[t.id]=t.value;render()}
+});
+window.proto={jump,go,S,render,setRole};
+render();
+</script>
+</body></html>
